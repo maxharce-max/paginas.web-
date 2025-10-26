@@ -152,7 +152,7 @@ function convertirAzimutRumbo() {
     }
 
     document.getElementById("resultado").innerHTML = 
-        ` **Rumbo:** ${rumboCuadrante} | Azimut: ${azimut.toFixed(2)}°`;
+        ` Rumbo: ${rumboCuadrante} | Azimut: ${azimut.toFixed(2)}°`;
     dibujarBrujula(azimut, getCuadranteName(azimut));
 }
 
