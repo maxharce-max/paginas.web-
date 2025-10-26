@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Rumbos y Azimuts (Mejorado)</title>
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #e9ecef;
+        text-align: center;
+        padding: 20px;
+        color: #343a40;
+    }
+    .container {
+        max-width: 700px;
+        margin: auto;
+        background: #ffffff;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+        color: #007bff;
+        margin-bottom: 25px;
+    }
+    .input-group {
+        margin: 15px 0;
+        padding: 15px;
+        border: 1px solid #ced4da;
+        border-radius: 5px;
+        background: #f8f9fa;
+    }
+    input, select, button {
+        padding: 10px;
+        margin: 5px;
+        font-size: 16px;
+        border-radius: 5px;
+        border: 1px solid #ced4da;
+    }
+    button {
+        background-color: #28a745;
+        color: white;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    button:hover {
+        background-color: #218838;
+    }
+    #resultado {
+        font-size: 22px;
+        margin-top: 20px;
+        padding: 10px;
+        font-weight: bold;
+        border-bottom: 2px solid #007bff;
+    }
+    canvas {
+        margin-top: 25px;
+        background: #fff;
+        border: 2px solid #ccc;
+        border-radius: 50%;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+    }
+    .error {
+        color: #dc3545;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Simulador de Conversión Rumbo ↔ Azimut</h1>
+
+    <div class="input-group">
+        <h3>1. Rumbo a Azimut</h3>
+        <label>Dirección:</label>
+        <select id="rumboCuadrante">
+            <option value="NE">N ... E</option>
+            <option value="NW">N ... W</option>
+            <option value="SE">S ... E</option>
+            <option value="SW">S ... W</option>
+        </select>
+        <input type="number" id="rumboAngulo" placeholder="Grados (0-90)" min="0" max="90">
+        <button onclick="convertirRumboAzimut()">Calcular Azimut</button>
+    </div>
+
+    <div class="input-group">
+        <h3>2. Azimut a Rumbo</h3>
+        <input type="number" id="azimutAngulo" placeholder="Azimut (0-360)" min="0" max="360">
+        <button onclick="convertirAzimutRumbo()">Calcular Rumbo</button>
+    </div>
+
+    <div id="resultado"></div>
+
+    <canvas id="brujula" width="300" height="300"></canvas>
+</div>
+
+<script>
+// --- Lógica de Rumbo a Azimut ---
+function convertirRumboAzimut() {
+    const cuadrante = document.getElementById("rumboCuadrante").value;
+    const angulo = parseFloat(document.getElementById("rumboAngulo").value);
+    let azimut = 0;
+
+    if (isNaN(angulo) || angulo < 0 || angulo > 90) {
+        document.getElementById("resultado").innerHTML = "<span class='error'>⚠️ Ingresa un ángulo de rumbo válido (0° a 90°)</span>";
+        return;
+    }
+
+    switch(cuadrante) {
+        case "NE": azimut = angulo; break;
+        case "SE": azimut = 180 - angulo; break;
+        case "SW": azimut = 180 + angulo; break;
+        case "NW": azimut = 360 - angulo; break;
+    }
+
+    document.getElementById("resultado").innerHTML = 
+        `MAXH.ARCE**Azimut:** ${azimut.toFixed(2)}° | Cuadrante: ${cuadrante}`;
+    dibujarBrujula(azimut, cuadrante);
+}
+
+// --- Lógica de Azimut a Rumbo ---
+function convertirAzimutRumbo() {
+    const azimut = parseFloat(document.getElementById("azimutAngulo").value);
+    let rumboAngulo = 0;
+    let rumboCuadrante = '';
+
+    if (isNaN(azimut) || azimut < 0 || azimut > 360) {
+        document.getElementById("resultado").innerHTML = "<span class='error'>⚠️ Ingresa un Azimut válido (0° a 360°)</span>";
+        return;
+    }
+    
+    // Normalizar 360° a 0° para la lógica de cuadrantes
+    const az = (azimut === 360) ? 0 : azimut; 
+    
+    if (az >= 0 && az <= 90) {
+        // I Cuadrante (NE)
+        rumboAngulo = az;
+        rumboCuadrante = `N${rumboAngulo.toFixed(2)}E`;
+    } else if (az > 90 && az <= 180) {
+        // II Cuadrante (SE)
+        rumboAngulo = 180 - az;
+        rumboCuadrante = `S${rumboAngulo.toFixed(2)}E`;
+    } else if (az > 180 && az <= 270) {
+        // III Cuadrante (SW)
+        rumboAngulo = az - 180;
+        rumboCuadrante = `S${rumboAngulo.toFixed(2)}W`;
+    } else if (az > 270 && az < 360) {
+        // IV Cuadrante (NW)
+        rumboAngulo = 360 - az;
+        rumboCuadrante = `N${rumboAngulo.toFixed(2)}W`;
+    }
+
+    document.getElementById("resultado").innerHTML = 
+        ` **Rumbo:** ${rumboCuadrante} | Azimut: ${azimut.toFixed(2)}°`;
+    dibujarBrujula(azimut, getCuadranteName(azimut));
+}
+
+// Función auxiliar para obtener el nombre del cuadrante (para dibujar)
+function getCuadranteName(az) {
+    if (az >= 0 && az <= 90) return 'NE';
+    if (az > 90 && az <= 180) return 'SE';
+    if (az > 180 && az <= 270) return 'SW';
+    if (az > 270 && az <= 360) return 'NW';
+    return '';
+}
+
+// --- Lógica de Dibujo (similar a la original) ---
+function dibujarBrujula(azimut, cuadrante) {
+    const c = document.getElementById("brujula");
+    const ctx = c.getContext("2d");
+    ctx.clearRect(0, 0, c.width, c.height);
+
+    // Centro
+    const cx = 150, cy = 150, r = 100;
+    const colorAzimut = (cuadrante === 'NW' || cuadrante === 'NE') ? '#007bff' : '#dc3545';
+    
+    // Círculo principal
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+    ctx.strokeStyle = "#495057";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Líneas N-S y E-W
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r); // N-S
+    ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); // E-W
+    ctx.strokeStyle = "#adb5bd";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Ejes N-S-E-W
+    ctx.font = "16px Arial";
+    ctx.fillStyle = "#343a40";
+    ctx.fillText("N", cx - 5, cy - r - 10);
+    ctx.fillText("S", cx - 5, cy + r + 20);
+    ctx.fillText("E", cx + r + 10, cy + 5);
+    ctx.fillText("W", cx - r - 25, cy + 5);
+
+    // Línea de azimut
+    // Ajuste: 0° (N) es -90° en coordenadas cartesianas del canvas.
+    const rad = (azimut - 90) * Math.PI / 180; 
+    const x = cx + r * Math.cos(rad);
+    const y = cy + r * Math.sin(rad);
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = colorAzimut;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Texto del Azimut
+    ctx.fillStyle = colorAzimut;
+    ctx.font = "14px Arial";
+    ctx.fillText(`Az: ${azimut.toFixed(1)}°`, x + (x > cx ? 5 : -50), y + (y > cy ? 15 : -10));
+}
+</script>
+
+</body>
+</html>
